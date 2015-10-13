@@ -44,23 +44,217 @@
 <li>doctorant en génie logiciel à l'Université de Nantes</li>
 <li>écrit des projets perso et pro en Scala et en Haskell (notamment) depuis ~ 2 an</li>
 </ul>
-<div style="text-align:center">
-<img src="img/escale.png" alt="">
-</div>
+<figure>
+<img src="img/escale.png" />
+</figure>
 </section>
-<section id="section" class="slide level1">
-<h1></h1>
+<section id="cas-dexemple" class="slide level1">
+<h1>Cas d'exemple</h1>
+<p>On veut valider un utilisateur qui s'inscrit.</p>
+<pre class="scala"><code>case class User(id: UUID,
+                bio: String,
+                birthday: String)
+
+case class CheckedUser(id: UUID,
+                       bio: String,
+                       birthday: DateTime)
+
+def validate(user: User): CheckedUser</code></pre>
+</section>
+<section id="cas-dexemple-1" class="slide level1">
+<h1>Cas d'exemple</h1>
+<pre class="scala"><code>case class User(id: UUID,
+                bio: String,
+                birthday: String)</code></pre>
+<p>3 échecs possibles :</p>
+<ul>
+<li>la bio est trop longue</li>
+<li>la date de naissance n'est pas au bon format</li>
+<li>la date de naissance est dans le futur</li>
+</ul>
+</section>
+<section id="principe-des-exceptions" class="slide level1">
+<h1>Principe des exceptions</h1>
+<ul>
+<li>on lance des exceptions depuis la définition de la fonction</li>
+<li>on espère qu'elles seront attrapées au niveau de l'appel</li>
+<li>YOLO</li>
+</ul>
+<figure>
+<img src="img/throw.gif" />
+</figure>
+</section>
+<section id="problème-avec-les-exceptions" class="slide level1">
+<h1>Problème avec les exceptions</h1>
+<ul>
+<li>si on n'attrape pas l'exception, elle se propage</li>
+<li>si on oublie de l'attraper, ça compile quand même</li>
+<li>la signature de la fonction est trompeuse</li>
+</ul>
+<pre class="scala"><code>def validate(user: User): CheckedUser</code></pre>
+<figure>
+<img src="img/liar.gif" />
+</figure>
+</section>
+<section id="optiona" class="slide level1">
+<h1>Option[A]</h1>
+<pre class="scala"><code>def validate(user: User): Option[CheckedUser] = {
+  // Si tout est ok
+  Some(checkedUser)
+
+  // Sinon
+  None
+}</code></pre>
+<p>Suffisant si on n'a pas besoin d'information sur l'erreur</p>
+</section>
+<section id="optiona-a" class="slide level1">
+<h1>Option[A] =&gt; A</h1>
+<pre class="scala"><code>val checkedUser: Option[CheckedUser] = ???
+
+// Pas bien (erreur de compilation)
+checkedUser.id
+
+// Pas bien (peut lancer une exception)
+checkedUser.get.id
+
+// Bien
+checkedUser match {
+  case Some(u) =&gt; u.id
+  case None    =&gt; ???
+  // Obligé de traiter le cas où ça échoue
+}</code></pre>
+</section>
+<section id="adt-pour-les-erreurs" class="slide level1">
+<h1>ADT pour les erreurs</h1>
+<pre class="scala"><code>// Validation Error
+sealed trait VE
+
+case class BioTooLong(length: Int) extends VE
+case object InvalidBirthdayFormat extends VE
+case object ImpossibleBirthday extends VE</code></pre>
+<p><strong>sealed</strong> aide le compilateur à vérifier tous les cas possibles</p>
+</section>
+<section id="eithera-b" class="slide level1">
+<h1>Either[A, B]</h1>
+<pre class="scala"><code>def validate(user: User):
+            Either[VE, CheckedUser] = {
+  // Si tout est ok
+  Right(checkedUser)
+
+  // Sinon
+  Left(error)
+}</code></pre>
+</section>
+<section id="eithera-b-1" class="slide level1">
+<h1>Either[A, B]</h1>
+<pre class="scala"><code>val checkedUser: Either[VE, CheckedUser] = ???
+
+checkedUser match {
+  case Right(u)                    =&gt; u.id
+  case Left(BioTooLong(length))    =&gt; ???
+  case Left(InvalidBirthdayFormat) =&gt; ???
+  case Left(ImpossibleBirthday)    =&gt; ???
+  // Warning du compilateur si on oublie un cas
+}</code></pre>
+</section>
+<section id="tryt" class="slide level1">
+<h1>Try[T]</h1>
+<pre class="scala"><code>def validate(user: User): Try[CheckedUser] = {
+  // Si tout est ok
+  Success(checkedUser)
+
+  // Sinon
+  Failure(error)
+}</code></pre>
+<p>Similaire à Either :</p>
+<ul>
+<li><code>Try[T] ~= Either[Throwable, T]</code></li>
+<li>pas de liste exhaustive des erreurs (<code>Throwable</code>)</li>
+<li>sympa pour interagir avec du code qui peut lancer des exceptions (Java)</li>
+</ul>
+</section>
+<section id="futuret" class="slide level1">
+<h1>Future[T]</h1>
+<p>Similaire à Try, mais asynchrone</p>
+<pre class="scala"><code>val f: Future[T] = ???
+val value: Option[Try[T]] = f.value</code></pre>
+<ul>
+<li><code>None</code> si pas encore complété</li>
+<li><code>Some(Success(t))</code> si complété avec succès</li>
+<li><code>Some(Failure(error))</code> si complété avec une erreur</li>
+</ul>
+</section>
+<section id="scalaz.a-b" class="slide level1">
+<h1>scalaz.\/[A, B]</h1>
+<pre class="scala"><code>import scalaz.{\/, -\/, \/-}
+def validate(user: User): VE \/ CheckedUser = {
+  // Si tout est ok
+  \/-(checkedUser)
+
+  // Sinon
+  -\/(error)
+}</code></pre>
+<p>Similaire à Either, mais part du principe que la valeur intéressante est à droite (<em>right-biased</em>)</p>
+<pre class="scala"><code>eitherVal.right.map(???)
+disjunctionVal.map(???)</code></pre>
+</section>
+<section id="scalaz.validatione-a" class="slide level1">
+<h1>scalaz.Validation[E, A]</h1>
+<pre class="scala"><code>import scalaz.{ValidationNel, Success, Failure}
+import scalaz.syntax.validation._
+import scalaz.syntax.applicative._</code></pre>
+<pre class="scala"><code>def checkBioLength(u: User):
+                  ValidationNel[VE, User] = {
+  val l = u.bio.length
+  if (l &lt; 5) u.success
+  else BioTooLong(l).failureNel
+}
+
+def checkBirthdayFormat(u: User):
+                ValidationNel[VE, User] = ???
+</code></pre>
+</section>
+<section id="scalaz.validatione-a-1" class="slide level1">
+<h1>scalaz.Validation[E, A]</h1>
+<pre class="scala"><code>def validate(user: User):
+            ValidationNel[VE, CheckedUser] = {
+  val cbl = checkBioLength(user)
+  val cbf = checkBirthdayFormat(user)
+  (cbl |@| cbf) { (u, _) =&gt;
+    CheckedUser(???)
+  }
+}</code></pre>
+<p>Permet d'accumuler les erreurs lorsqu'on fait des validations indépendantes</p>
+</section>
+<section id="rapture.modes-principe" class="slide level1">
+<h1>rapture.modes (principe)</h1>
+<ul>
+<li>définir une fonction pouvant échouer et la wrapper avec Rapture</li>
+<li>au niveau de l'appel de la fonction, choisir le mode désiré (<code>import modes.returnEither._</code>)</li>
+<li>la fonction va renvoyer un <code>Either</code> !</li>
+</ul>
+<p>GitHub : <a href="https://github.com/propensive/rapture-core">propensive/rapture-core</a></p>
+<p><a href="http://blog.scalac.io/2015/05/28/scala-modes.html">http://blog.scalac.io/2015/05/28/scala-modes.html</a></p>
+</section>
+<section id="conclusion" class="slide level1">
+<h1>Conclusion</h1>
+<p>Utiliser correctement ces types pour gérer les erreurs permet :</p>
+<ul>
+<li>d'afficher clairement le contrat d'une fonction (pure)</li>
+<li>d'avoir une vérification de cohérence par le compilateur</li>
+</ul>
+<figure>
+<img src="img/awesome.gif" />
+</figure>
 </section>
 <section id="questions" class="slide level1">
 <h1>Questions ?</h1>
-<div style="text-align:center">
-
-</div>
-<div style="text-align:center">
+<figure>
+<img src="img/question.gif" />
+</figure>
 <p>Twitter : @d_sferruzza</p>
 <p>Slides sur GitHub :</p>
-<a href="http://github.com/dsferruzza/talk-gestion-erreurs-en-scala">dsferruzza/talk-gestion-erreurs-en-scala</a>
-</div>
+<p><a href="http://github.com/dsferruzza/talk-gestion-erreurs-en-scala">dsferruzza/talk-gestion-erreurs-en-scala</a></p>
 </section>
     </div>
   </div>
@@ -82,7 +276,7 @@
         controls: true,         // Display controls in the bottom right corner
         progress: true,         // Display a presentation progress bar
         history: true,          // Push each slide change to the browser history
-        center: true,                       // Vertical centering of slides
+        center: false,                       // Vertical centering of slides
         maxScale: 1.5,                  // Bounds for smallest/largest possible content scale
         slideNumber: true,                // Display the page number of the current slide
         theme: 'escale', // available themes are in /css/theme
