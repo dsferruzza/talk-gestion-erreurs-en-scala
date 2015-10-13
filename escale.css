@@ -536,3 +536,9 @@ body {
 .xml .css,
 .xml .hljs-cdata {
   opacity: 0.5; }
+
+.scala .hljs-type {
+  color: #3e999f; }
+
+.scala .hljs-function {
+  color: #000; }
