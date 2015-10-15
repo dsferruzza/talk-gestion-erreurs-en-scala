@@ -84,8 +84,8 @@ $body$
   <script>
       // Dirty hack to remove slide IDs (because french accents break URLs)
       var slides = document.querySelectorAll('.slides > section');
-      for (var slide of slides) {
-        slide.removeAttribute('id');
+      for (var i = 0; i < slides.length; ++i) {
+        slides[i].removeAttribute('id');
       }
 
       // Full list of configuration options available here:
@@ -106,9 +106,9 @@ $body$
           { src: '$revealjs-url$/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
           { src: '$revealjs-url$/plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
           { src: '$revealjs-url$/plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } },
-//          { src: '$revealjs-url$/plugin/search/search.js', async: true, condition: function() { return !!document.body.classList; }, }
-//          { src: '$revealjs-url$/plugin/remotes/remotes.js', async: true, condition: function() { return !!document.body.classList; } }
-]});
+          //{ src: '$revealjs-url$/plugin/search/search.js', async: true, condition: function() { return !!document.body.classList; }, }
+          //{ src: '$revealjs-url$/plugin/remotes/remotes.js', async: true, condition: function() { return !!document.body.classList; } }
+      ]});
     </script>
   $for(include-after)$
   $include-after$
